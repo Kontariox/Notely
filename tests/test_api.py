@@ -73,6 +73,36 @@ async def test_calendar_status(client):
 
 
 @pytest.mark.asyncio
+async def test_calendar_auth_url_no_code_challenge():
+    from app.calendar.google_calendar import GoogleCalendarService
+    service = GoogleCalendarService(
+        client_id="dummy_client_id.apps.googleusercontent.com",
+        client_secret="dummy_client_secret",
+        redirect_uri="http://localhost:8000/api/calendar/callback"
+    )
+    url, state = service.get_auth_url()
+    assert "code_challenge" not in url
+    assert "code_challenge_method" not in url
+    assert "client_id=dummy_client_id" in url
+    assert state == "notely_auth"
+
+
+@pytest.mark.asyncio
+async def test_calendar_callback_handles_error(client):
+    response = await client.get("/api/calendar/callback?error=access_denied", follow_redirects=False)
+    assert response.status_code == 307
+    assert "/?calendar_error=access_denied" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_calendar_disconnect(client):
+    response = await client.post("/api/calendar/disconnect")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "disconnected"
+
+
+@pytest.mark.asyncio
 async def test_external_ai_prep_no_forced_split(client):
     from app.database.session import AsyncSessionLocal
     from app.database.repository import LessonRepository

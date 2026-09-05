@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -7,6 +8,8 @@ from app.database.session import get_db
 from app.database.repository import GoogleOAuthRepository, LessonRepository, SettingsRepository
 from app.calendar.google_calendar import GoogleCalendarService, CalendarError
 from app.api.schemas import CalendarSyncRequest
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -43,13 +46,16 @@ async def get_google_auth_url():
 async def google_auth_callback(
     code: Optional[str] = Query(None),
     error: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     """Handles Google OAuth redirect callback."""
     if error:
+        logger.warning(f"Google OAuth zwrócił błąd: {error}")
         return RedirectResponse(url=f"/?calendar_error={error}")
 
     if not code:
+        logger.warning("Google OAuth callback wywołany bez parametru code.")
         return RedirectResponse(url="/?calendar_error=missing_code")
 
     cal_service = GoogleCalendarService()
@@ -67,8 +73,10 @@ async def google_auth_callback(
             expiry=token_data.get("expiry"),
             email=token_data.get("email")
         )
+        logger.info(f"Pomyślnie połączono z kontem Google Calendar: {token_data.get('email')}")
         return RedirectResponse(url="/?calendar=connected")
     except Exception as e:
+        logger.exception(f"Błąd podczas wymiany kodu na token Google Calendar: {e}")
         return RedirectResponse(url=f"/?calendar_error={str(e)}")
 
 

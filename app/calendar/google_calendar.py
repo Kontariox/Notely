@@ -58,7 +58,8 @@ class GoogleCalendarService:
         flow = Flow.from_client_config(
             self._get_client_config(),
             scopes=SCOPES,
-            redirect_uri=self.redirect_uri
+            redirect_uri=self.redirect_uri,
+            autogenerate_code_verifier=False
         )
         auth_url, _ = flow.authorization_url(
             access_type="offline",
@@ -75,7 +76,8 @@ class GoogleCalendarService:
         flow = Flow.from_client_config(
             self._get_client_config(),
             scopes=SCOPES,
-            redirect_uri=self.redirect_uri
+            redirect_uri=self.redirect_uri,
+            autogenerate_code_verifier=False
         )
         flow.fetch_token(code=code)
         creds = flow.credentials
@@ -94,8 +96,8 @@ class GoogleCalendarService:
             "access_token": creds.token,
             "refresh_token": creds.refresh_token,
             "token_uri": creds.token_uri,
-            "client_id": creds.client_id,
-            "client_secret": creds.client_secret,
+            "client_id": creds.client_id or self.client_id,
+            "client_secret": creds.client_secret or self.client_secret,
             "scopes": " ".join(creds.scopes) if creds.scopes else " ".join(SCOPES),
             "expiry": creds.expiry,
             "email": user_email
