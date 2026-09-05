@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  notely:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notely-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_NIM_MODEL=${NVIDIA_NIM_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}
+      - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      - TRANSCRIPTION_ENGINE=${TRANSCRIPTION_ENGINE:-faster-whisper}
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_DEVICE=${WHISPER_DEVICE:-auto}
+      - WHISPER_COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE:-auto}
+      - DELETE_SOURCE_AFTER_PROCESSING=${DELETE_SOURCE_AFTER_PROCESSING:-false}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/calendar/callback}
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/notely.db
+    volumes:
+      - notely-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional GPU Profile for NVIDIA hardware acceleration
+  # Run with: docker compose --profile gpu up
+  notely-gpu:
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notely-app-gpu
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - WHISPER_DEVICE=cuda
+      - WHISPER_COMPUTE_TYPE=float16
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_NIM_MODEL=${NVIDIA_NIM_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/notely.db
+    volumes:
+      - notely-data:/app/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  notely-data:
+    driver: local

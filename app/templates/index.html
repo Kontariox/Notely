@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notely — AI Notatki z Lekcji</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">✨</div>
+                <div>
+                    <h1>Notely</h1>
+                    <span class="badge-sub">AI Edu Assistant</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="tab-upload">
+                    <span class="icon">🎙️</span> Nowa lekcja
+                </button>
+                <button class="nav-item" data-tab="tab-history">
+                    <span class="icon">📚</span> Historia lekcji
+                    <span class="history-count" id="historyCountBadge">0</span>
+                </button>
+                <button class="nav-item" data-tab="tab-settings">
+                    <span class="icon">⚙️</span> Ustawienia
+                </button>
+            </nav>
+
+            <div class="sidebar-status">
+                <div class="status-card">
+                    <div class="status-label">Domyślna konfiguracja:</div>
+                    <div class="status-val" id="sidebarConfigInfo">faster-whisper • NVIDIA NIM</div>
+                    <div class="status-indicator">
+                        <span class="dot-online"></span> NIM API (40 RPM Safe)
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Toast notification container -->
+            <div id="toastContainer" class="toast-container"></div>
+
+            <!-- TAB 1: NOWA LEKCJA / PRZETWARZANIE -->
+            <section id="tab-upload" class="tab-pane active">
+                <header class="pane-header" id="uploadPaneHeader">
+                    <h2>AI Notatki z Lekcji</h2>
+                    <p class="subtitle">Przekształć nagranie lekcji audio lub wideo w profesjonalną, usystematyzowaną notatkę z wykrytymi sprawdzianami i zadaniami.</p>
+                </header>
+
+                <div class="upload-grid" id="uploadGrid">
+                    <!-- Upload Card -->
+                    <div class="card upload-box-card">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="dropzone" id="dropzone">
+                                <input type="file" id="mediaFileInput" name="file" accept=".mp3,.wav,.m4a,.aac,.mp4,.mov,.webm,.ogg,.flac" hidden required>
+                                <div class="dropzone-content">
+                                    <div class="upload-icon">📁</div>
+                                    <h3>Wybierz lub upuść nagranie lekcji</h3>
+                                    <p class="file-hint">Audio lub wideo: MP3, WAV, M4A, AAC, MP4, MOV, WEBM (do 2 GB)</p>
+                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('mediaFileInput').click()">
+                                        Przeglądaj pliki
+                                    </button>
+                                </div>
+                                <div id="selectedFileInfo" class="selected-file-badge hidden">
+                                    <span class="file-icon">🎵</span>
+                                    <span id="selectedFileName" class="file-name"></span>
+                                    <button type="button" class="btn-icon" id="clearFileBtn" title="Usuń plik">&times;</button>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="subjectInput">Przedmiot szkolny / akademicki</label>
+                                    <input type="text" id="subjectInput" name="subject" placeholder="np. Matematyka, Historia, Język polski...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="lessonDateInput">Data lekcji (baza do wyliczania terminów)</label>
+                                    <input type="date" id="lessonDateInput" name="lesson_date">
+                                </div>
+                            </div>
+
+                            <!-- Advanced Toggle -->
+                            <div class="advanced-section">
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="useDefaultSettings" checked>
+                                    <label for="useDefaultSettings">Użyj ustawień domyślnych aplikacji</label>
+                                </div>
+
+                                <div id="advancedOptions" class="advanced-fields hidden">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="overrideEngine">Silnik transkrypcji</label>
+                                            <select id="overrideEngine" name="transcription_engine">
+                                                <option value="faster-whisper">faster-whisper (CTranslate2)</option>
+                                                <option value="whisper">Whisper large-v3 (OpenAI)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="overrideWhisperModel">Model Whisper</label>
+                                            <select id="overrideWhisperModel" name="whisper_model">
+                                                <option value="large-v3">large-v3 (Najwyższa dokładność)</option>
+                                                <option value="medium">medium</option>
+                                                <option value="small">small</option>
+                                                <option value="base">base</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="overrideNimModel">Model NVIDIA NIM</label>
+                                            <input type="text" id="overrideNimModel" name="nim_model" placeholder="nvidia/nemotron-3-ultra-550b-a55b">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="startProcessBtn" class="btn btn-primary btn-block btn-lg" disabled>
+                                🚀 Rozpocznij przetwarzanie
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pipeline Progress Card -->
+                    <div id="progressCard" class="card progress-card hidden">
+                        <h3>Status przetwarzania na żywo</h3>
+                        <div class="progress-bar-container">
+                            <div id="progressBar" class="progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-meta">
+                            <span id="progressPercent">0%</span>
+                            <span id="currentStageText" class="current-stage">Inicjalizacja...</span>
+                        </div>
+
+                        <!-- Step Checklist -->
+                        <div class="pipeline-steps">
+                            <div class="step-item" id="step-upload">
+                                <span class="step-bullet">○</span>
+                                <span class="step-text">1. Plik przesłany na serwer</span>
+                            </div>
+                            <div class="step-item" id="step-audio">
+                                <span class="step-bullet">○</span>
+                                <span class="step-text">2. Ekstrakcja audio i konwersja (FFmpeg)</span>
+                            </div>
+                            <div class="step-item" id="step-transcribe">
+                                <span class="step-bullet">○</span>
+                                <span class="step-text">3. Transkrypcja mowy (Whisper)</span>
+                            </div>
+                            <div class="step-item" id="step-nim">
+                                <span class="step-bullet">○</span>
+                                <span class="step-text">4. Analiza AI & Wykrywanie wydarzeń (NVIDIA NIM)</span>
+                            </div>
+                            <div class="step-item" id="step-notes">
+                                <span class="step-bullet">○</span>
+                                <span class="step-text">5. Synteza i generowanie uporządkowanej notatki</span>
+                            </div>
+                        </div>
+
+                        <div id="errorMessageAlert" class="alert alert-danger hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Lesson Result Workspace -->
+                <div id="lessonResultSection" class="lesson-result-section hidden">
+                    <div class="lesson-top-nav">
+                        <div class="lesson-top-nav-left">
+                            <button type="button" class="btn btn-sm btn-outline" id="backToHistoryBtn">
+                                ← Wróć do historii
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" id="backToUploadBtn">
+                                🎙️ Nowe nagranie
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="result-header-bar">
+                        <div>
+                            <span class="subject-badge" id="resSubject">Przedmiot</span>
+                            <h2 id="resTopic" class="res-title">Temat lekcji</h2>
+                            <div class="meta-row">
+                                <span id="resDate">Data</span> •
+                                <span id="resDuration">Czas: 0:00</span> •
+                                <span id="resEngine">Silnik</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons-top">
+                            <button class="btn btn-outline" id="copyAllDataBtn">📋 Kopiuj wszystko</button>
+                            <button class="btn btn-outline" id="copyNotesBtn">📝 Kopiuj notatkę</button>
+                            <button class="btn btn-primary" id="downloadDocxBtn">📄 Pobierz DOCX</button>
+                        </div>
+                    </div>
+
+                    <!-- Result Tabs -->
+                    <div class="sub-tabs">
+                        <button class="sub-tab-btn active" data-subtab="subtab-notes">📖 Gotowa Notatka</button>
+                        <button class="sub-tab-btn" data-subtab="subtab-events">
+                            📅 Wydarzenia i Terminy (<span id="eventCountBadge">0</span>)
+                        </button>
+                        <button class="sub-tab-btn" data-subtab="subtab-transcription">🎙️ Pełna Transkrypcja</button>
+                        <button class="sub-tab-btn" data-subtab="subtab-ai-prep">🤖 Przygotuj do zewnętrznego AI</button>
+                    </div>
+
+                    <!-- SUBTAB 1: NOTES -->
+                    <div id="subtab-notes" class="subtab-content active">
+                        <div class="card notes-card">
+                            <div class="notes-content-markdown" id="notesMarkdownViewer"></div>
+                        </div>
+                    </div>
+
+                    <!-- SUBTAB 2: EVENTS & CALENDAR -->
+                    <div id="subtab-events" class="subtab-content">
+                        <div class="card events-card">
+                            <div class="events-card-header">
+                                <div>
+                                    <h3>Wykryte sprawdziany, kartkówki i zadania</h3>
+                                    <p class="subtitle-sm">Zaznacz pozycje, które chcesz zsynchronizować z Kalendarzem Google.</p>
+                                </div>
+                                <button class="btn btn-google" id="syncCalendarBtn">
+                                    🗓️ Dodaj zaznaczone do Kalendarza Google
+                                </button>
+                            </div>
+
+                            <div id="eventsListContainer" class="events-list">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUBTAB 3: TRANSCRIPTION -->
+                    <div id="subtab-transcription" class="subtab-content">
+                        <div class="card transcription-card">
+                            <div class="transcription-toolbar">
+                                <div>
+                                    <strong>Transkrypcja nagrania</strong>
+                                    <span class="badge-sub" id="transcriptionLenBadge">0 słów</span>
+                                </div>
+                                <div class="export-dropdowns">
+                                    <button class="btn btn-sm btn-outline" id="copyTranscriptionBtn">📋 Kopiuj transkrypcję</button>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary" id="downloadTranscriptionTxt">Pobierz .TXT</button>
+                                        <button class="btn btn-sm btn-outline" id="downloadTranscriptionMd">.MD</button>
+                                        <button class="btn btn-sm btn-outline" id="downloadTranscriptionSrt">.SRT</button>
+                                        <button class="btn btn-sm btn-outline" id="downloadTranscriptionVtt">.VTT</button>
+                                        <button class="btn btn-sm btn-outline" id="downloadTranscriptionJson">.JSON</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transcription-text-area" id="transcriptionTextViewer"></div>
+                        </div>
+                    </div>
+
+                    <!-- SUBTAB 4: EXTERNAL AI PREPARATION -->
+                    <div id="subtab-ai-prep" class="subtab-content">
+                        <div class="card ai-prep-card">
+                            <div class="ai-prep-header">
+                                <div>
+                                    <h3>🤖 Przygotuj do zewnętrznego AI (ChatGPT, Claude, Gemini)</h3>
+                                    <p class="subtitle-sm">Pobierz pełną transkrypcję jako plik do załączenia i skopiuj kompletny prompt analityczny dla modelu AI.</p>
+                                </div>
+                            </div>
+
+                            <!-- Workflow Steps Cards -->
+                            <div class="ai-prep-steps-box">
+                                <div class="ai-step-card">
+                                    <div class="step-num-badge">1</div>
+                                    <div class="step-details">
+                                        <h4>Pobierz pełną transkrypcję</h4>
+                                        <p>Pobierz oryginalną treść transkrypcji do pliku i załącz go w oknie rozmowy z ChatGPT, Claude lub Gemini.</p>
+                                        <div class="step-actions">
+                                            <button type="button" class="btn btn-primary" id="downloadTranscriptionTxtBtn">
+                                                📥 Pobierz transkrypcję (.TXT)
+                                            </button>
+                                            <button type="button" class="btn btn-outline" id="downloadTranscriptionMdBtn">
+                                                📄 .MD
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ai-step-card">
+                                    <div class="step-num-badge">2</div>
+                                    <div class="step-details">
+                                        <h4>Skopiuj prompt analityczny</h4>
+                                        <p>Skopiuj gotowy, rygorystyczny prompt z instrukcją sporządzenia notatki i wklej go jako treść wiadomości do załączonego pliku.</p>
+                                        <div class="step-actions">
+                                            <button type="button" class="btn btn-accent-primary" id="copyAnalyticalPromptBtn">
+                                                📋 Kopiuj pełny prompt analityczny
+                                            </button>
+                                            <button type="button" class="btn btn-outline" id="copyCombinedPromptBtn" title="Kopiuje prompt razem z wklejoną całą transkrypcją (bez konieczności załączania pliku)">
+                                                📦 Kopiuj całość (All-in-one)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preview Section -->
+                            <div class="ai-prep-preview-card">
+                                <div class="preview-header-bar">
+                                    <div class="preview-tabs">
+                                        <button type="button" class="preview-tab-btn active" data-preview="prompt" id="tabPrevPrompt">
+                                            📋 Podgląd Promptu Analitycznego
+                                        </button>
+                                        <button type="button" class="preview-tab-btn" data-preview="transcription" id="tabPrevTrans">
+                                            🎙️ Podgląd Transkrypcji
+                                        </button>
+                                        <button type="button" class="preview-tab-btn" data-preview="combined" id="tabPrevCombined">
+                                            📦 Całość (Prompt + Transkrypcja)
+                                        </button>
+                                    </div>
+                                    <div class="preview-actions">
+                                        <button type="button" class="btn btn-sm btn-outline" id="copyActivePreviewBtn">
+                                            📋 Kopiuj podgląd do schowka
+                                        </button>
+                                    </div>
+                                </div>
+                                <pre id="aiPrepTextDisplay" class="code-display"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: HISTORIA LEKCJI -->
+            <section id="tab-history" class="tab-pane">
+                <header class="pane-header">
+                    <h2>Historia lekcji</h2>
+                    <p class="subtitle">Przeglądaj wcześniej przetworzone lekcje, filtruj według przedmiotu i sortuj według daty.</p>
+                </header>
+
+                <div class="history-controls-bar">
+                    <div class="history-filter-item">
+                        <label for="historySubjectFilter">
+                            <span class="filter-icon">🏷️</span> Przedmiot:
+                        </label>
+                        <select id="historySubjectFilter">
+                            <option value="">Wszystkie przedmioty</option>
+                        </select>
+                    </div>
+
+                    <div class="history-filter-item">
+                        <label for="historyDateSort">
+                            <span class="filter-icon">📅</span> Sortuj według daty:
+                        </label>
+                        <select id="historyDateSort">
+                            <option value="date-desc">Data lekcji (od najnowszych ↓)</option>
+                            <option value="date-asc">Data lekcji (od najstarszych ↑)</option>
+                            <option value="created-desc">Data dodania (od najnowszych ↓)</option>
+                            <option value="created-asc">Data dodania (od najstarszych ↑)</option>
+                        </select>
+                    </div>
+
+                    <div class="history-filter-item search-item">
+                        <label for="historySearchInput">
+                            <span class="filter-icon">🔍</span> Szukaj:
+                        </label>
+                        <input type="text" id="historySearchInput" placeholder="Szukaj po nazwie pliku, przedmiocie, dacie...">
+                    </div>
+
+                    <div class="history-stats" id="historyStatsText">
+                        Liczba lekcji: 0
+                    </div>
+                </div>
+
+                <div class="card history-card">
+                    <div class="table-responsive">
+                        <table class="data-table" id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th id="thDateSort" class="sortable-th" title="Kliknij, aby zmienić kierunek sortowania">
+                                        Data lekcji <span id="thDateSortIcon">↓</span>
+                                    </th>
+                                    <th>Przedmiot</th>
+                                    <th>Plik źródłowy</th>
+                                    <th>Czas nagrania</th>
+                                    <th>Status</th>
+                                    <th>Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Ładowanie historii...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: USTAWIENIA -->
+            <section id="tab-settings" class="tab-pane">
+                <header class="pane-header">
+                    <h2>⚙ Ustawienia aplikacji</h2>
+                    <p class="subtitle">Globalna konfiguracja silników transkrypcji, NVIDIA NIM oraz integracji kalendarza.</p>
+                </header>
+
+                <form id="settingsForm">
+                    <div class="settings-grid">
+                        <!-- Transcription Settings -->
+                        <div class="card settings-card">
+                            <div class="card-icon-title">
+                                <span class="card-icon">🎙️</span>
+                                <h3>Transkrypcja mowy</h3>
+                            </div>
+                            <div class="form-group">
+                                <label for="setEngine">Domyślny silnik:</label>
+                                <select id="setEngine" name="transcription_engine">
+                                    <option value="faster-whisper">faster-whisper (CTranslate2 - szybki, lekki)</option>
+                                    <option value="whisper">Whisper large-v3 (Oficjalny OpenAI)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="setModel">Rozmiar modelu Whisper:</label>
+                                <select id="setModel" name="whisper_model">
+                                    <option value="large-v3">large-v3 (Maksymalna precyzja)</option>
+                                    <option value="medium">medium</option>
+                                    <option value="small">small</option>
+                                    <option value="base">base</option>
+                                    <option value="tiny">tiny</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="setDevice">Urządzenie obliczeniowe:</label>
+                                    <select id="setDevice" name="whisper_device">
+                                        <option value="auto">auto (Wykryj GPU / fallback CPU)</option>
+                                        <option value="cuda">cuda (NVIDIA GPU)</option>
+                                        <option value="cpu">cpu (Procesor)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="setCompute">Typ obliczeń (compute_type):</label>
+                                    <select id="setCompute" name="whisper_compute_type">
+                                        <option value="auto">auto</option>
+                                        <option value="int8">int8 (Zalecane na CPU)</option>
+                                        <option value="float16">float16 (Zalecane na GPU)</option>
+                                        <option value="float32">float32</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="setLanguage">Język nagrania:</label>
+                                <input type="text" id="setLanguage" name="whisper_language" value="pl">
+                            </div>
+                        </div>
+
+                        <!-- NVIDIA NIM AI Settings -->
+                        <div class="card settings-card">
+                            <div class="card-icon-title">
+                                <span class="card-icon">🧠</span>
+                                <h3>Analiza AI (NVIDIA NIM)</h3>
+                            </div>
+                            <div class="form-group">
+                                <label for="setNimModel">Domyślny model NIM:</label>
+                                <input type="text" id="setNimModel" name="nvidia_nim_model" placeholder="nvidia/nemotron-3-ultra-550b-a55b">
+                            </div>
+                            <div class="form-group">
+                                <label for="setNimApiKey">Klucz NVIDIA API:</label>
+                                <input type="password" id="setNimApiKey" name="nvidia_api_key" placeholder="nvapi-...">
+                                <small class="form-hint">Klucz z platformy build.nvidia.com. Ograniczenie 40 RPM jest chronione globalnym limiterem.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="setNimBaseUrl">NVIDIA Base URL:</label>
+                                <input type="text" id="setNimBaseUrl" name="nvidia_base_url" placeholder="https://integrate.api.nvidia.com/v1">
+                            </div>
+                            <div class="form-group">
+                                <label for="setNimTemp">Temperatura generowania (kreatywność vs precyzja):</label>
+                                <div class="range-row">
+                                    <input type="range" id="setNimTemp" name="nvidia_temperature" min="0.0" max="1.0" step="0.05" value="0.2">
+                                    <span id="tempValueDisplay">0.20</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Google Calendar Settings -->
+                        <div class="card settings-card">
+                            <div class="card-icon-title">
+                                <span class="card-icon">🗓️</span>
+                                <h3>Google Calendar (OAuth 2.0)</h3>
+                            </div>
+                            <div id="calendarStatusBox" class="calendar-status-box">
+                                <div class="cal-status-row">
+                                    <span id="calStatusDot" class="dot-offline"></span>
+                                    <span id="calStatusText">Status: Sprawdzanie...</span>
+                                </div>
+                                <div id="calUserEmail" class="cal-email-text"></div>
+                                <div class="cal-actions">
+                                    <button type="button" class="btn btn-sm btn-google" id="connectGoogleBtn">Połącz z Google Calendar</button>
+                                    <button type="button" class="btn btn-sm btn-danger hidden" id="disconnectGoogleBtn">Odłącz konto</button>
+                                </div>
+                            </div>
+                            <div class="checkbox-row" style="margin-top: 15px;">
+                                <input type="checkbox" id="setAutoAddCalendar" name="google_calendar_auto_add">
+                                <label for="setAutoAddCalendar">Automatycznie dodawaj wykryte wydarzenia o wysokiej pewności</label>
+                            </div>
+                        </div>
+
+                        <!-- Storage & Privacy Settings -->
+                        <div class="card settings-card">
+                            <div class="card-icon-title">
+                                <span class="card-icon">🔒</span>
+                                <h3>Prywatność i przechowywanie</h3>
+                            </div>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="setDeleteSource" name="delete_source_after_processing">
+                                <label for="setDeleteSource">Automatycznie usuwaj oryginalne pliki wideo/audio po przetworzeniu</label>
+                            </div>
+                            <p class="form-hint" style="margin-top: 8px;">
+                                Gdy włączone, serwer usuwa duże nagrania z dysku zaraz po zakończeniu transkrypcji, zachowując jedynie tekst, notatkę i wykryte terminy.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="settings-save-bar">
+                        <button type="submit" class="btn btn-primary btn-lg">💾 Zapisz ustawienia</button>
+                    </div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
